@@ -1,29 +1,29 @@
-import React from "react";
-import { Todo } from "../../types/Todo";
-import { TodoInfo } from "../TodoInfo/TodoInfo";
+import React from 'react';
+import { Todo } from '../../types/Todo';
+import { TodoInfo } from '../TodoInfo/TodoInfo';
 
 interface Props {
   todos: Todo[];
-  loading: number;
-  editing: number;
-  onDelete: () => {};
+  inLoading: number[];
+  handleDelete: (todoId: number) => Promise<void>;
+  handleChange: (todoId: number, changed: Partial<Todo>) => Promise<void>;
 }
 
 export const TodoList: React.FC<Props> = ({
   todos,
-  loading,
-  editing,
-  onDelete,
+  inLoading,
+  handleChange,
+  handleDelete,
 }) => {
   return (
     <section className="todoapp__main" data-cy="TodoList">
       {todos.map(todo => (
         <TodoInfo
           todo={todo}
-          onDelete={onDelete}
+          handleDelete={handleDelete}
+          handleChange={handleChange}
+          inLoading={inLoading.includes(todo.id)}
           key={todo.id}
-          loading={loading !== -1 ? todo.id === loading : false}
-          editing={loading !== -1 ? todo.id === editing : false}
         />
       ))}
     </section>
