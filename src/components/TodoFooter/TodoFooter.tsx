@@ -4,6 +4,7 @@ import cn from 'classnames';
 
 interface Props {
   todoAmount: number;
+  completedAmount: number;
   sortType: SortType;
   onSortChange: (
     event: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
@@ -14,6 +15,7 @@ interface Props {
 
 export const TodoFooter: React.FC<Props> = ({
   todoAmount,
+  completedAmount,
   sortType,
   onSortChange,
   handleCleanCompleted,
@@ -56,6 +58,7 @@ export const TodoFooter: React.FC<Props> = ({
         className="todoapp__clear-completed"
         data-cy="ClearCompletedButton"
         onClick={handleCleanCompleted}
+        disabled={completedAmount === 0}
       >
         Clear completed
       </button>

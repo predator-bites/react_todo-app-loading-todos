@@ -9,6 +9,7 @@ import { TodoFooter } from './components/TodoFooter/TodoFooter';
 import cn from 'classnames';
 import { SortType } from './types/SortType';
 import { TodoInfo } from './components/TodoInfo/TodoInfo';
+import { Err } from './types/Error';
 
 export const App: React.FC = () => {
   //#region Hooks
@@ -19,10 +20,15 @@ export const App: React.FC = () => {
   const [title, setTitle] = useState('');
 
   const [sortType, setSortType] = useState<SortType>('all');
-  const [subTodo, setSubTodo] = useState<Todo | Omit<Todo, 'id'> | null>(null);
+  const [tempTodo, setTempTodo] = useState<Todo | Omit<Todo, 'id'> | null>(
+    null,
+  );
+
+  //helpful states
   const [todosInLoad, setTodosInLoad] = useState<number[]>([]);
   const [allCompleted, setAllCompleted] = useState(false);
   const [activeAmount, setActiveAmount] = useState(0);
+  const inputField = useRef<HTMLInputElement | null>(null);
 
   const timerId = useRef(0);
   //#endregion
@@ -45,13 +51,13 @@ export const App: React.FC = () => {
     setTitle(ev.target.value);
   };
 
-  const handleErrors = (err: Err) => {
+  const handleErrors = useCallback((err: Err) => {
     setError(err);
 
     const debouncedFunc = debounce(setError, 3000);
 
     return debouncedFunc('');
-  };
+  }, []);
 
   const handlingSortTypeChange = (
     event: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
@@ -88,27 +94,24 @@ export const App: React.FC = () => {
     };
 
     if (!title) {
-      handleErrors('Title should not be empty');
-
-      return;
+      return handleErrors('Title should not be empty');
     }
 
-    setSubTodo(newTodo);
+    setTempTodo(newTodo);
 
     return reqs
       .addTodo(newTodo)
       .then(res => {
         handleReset();
 
-        return setAllTodos(currentTodos => [...currentTodos, res]);
+        setAllTodos(currentTodos => [...currentTodos, res]);
       })
-      .catch(e => {
+      .catch(() => {
         handleErrors('Unable to add a todo');
-        throw e;
       })
       .finally(() => {
         setActiveAmount(c => c + 1);
-        setSubTodo(null);
+        setTempTodo(null);
       });
   };
 
@@ -213,7 +216,18 @@ export const App: React.FC = () => {
 
   //#endregion
 
-  //#region Loading and filtering todos
+  //#region Loading, focusing and filtering todos
+  useEffect(() => {
+    if (
+      error === 'Unable to add a todo' ||
+      error === 'Title should not be empty'
+    ) {
+      if (inputField.current) {
+        inputField.current.focus();
+      }
+    }
+  }, [error]);
+
   useEffect(() => {
     reqs
       .getTodos()
@@ -226,9 +240,15 @@ export const App: React.FC = () => {
         handleErrors('Unable to load todos');
         throw e;
       });
-  }, [handleActiveAmountChange]);
+
+    if (inputField.current) {
+      inputField.current.focus();
+    }
+  }, [handleActiveAmountChange, handleErrors]);
 
   useEffect(() => {
+    handleActiveAmountChange(allTodos);
+
     if (sortType === 'all') {
       setTodos(allTodos);
 
@@ -257,8 +277,7 @@ export const App: React.FC = () => {
     });
 
     setTodos(newTds);
-  }, [sortType, allTodos]);
-
+  }, [sortType, allTodos, handleActiveAmountChange]);
   //#endregion
 
   //#region TSX
@@ -283,12 +302,14 @@ export const App: React.FC = () => {
 
           <form onSubmit={handleSubmit}>
             <input
+              ref={inputField}
               data-cy="NewTodoField"
               type="text"
               className="todoapp__new-todo"
               placeholder="What needs to be done?"
               value={title}
               onChange={handlingTitleChange}
+              disabled={tempTodo !== null}
             />
           </form>
         </header>
@@ -299,9 +320,9 @@ export const App: React.FC = () => {
           handleChange={handleChange}
           inLoading={todosInLoad}
         />
-        {subTodo && (
+        {tempTodo && (
           <TodoInfo
-            todo={subTodo}
+            todo={tempTodo}
             inLoading={true}
             handleDelete={handleDelete}
             handleChange={handleChange}
@@ -311,6 +332,7 @@ export const App: React.FC = () => {
         {allTodos.length !== 0 && (
           <TodoFooter
             todoAmount={activeAmount}
+            completedAmount={allTodos.length - activeAmount}
             sortType={sortType}
             onSortChange={handlingSortTypeChange}
             handleCleanCompleted={handleCleanCompleted}
